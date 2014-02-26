@@ -1,19 +1,33 @@
 #!/usr/bin/python
+#Created: 26 feb 2014 14:25:50 CET
+
 import MySQLdb
 import logging
 import time
 import sys
 import subprocess, threading
+import graypy
+import commands
 
+mysql_user="user"
+mysql_password="password"
+
+
+###############################################################################################
 logger = logging.getLogger('backup_raw')
+handler = graypy.GELFHandler('logging902.office.alatest.se', 12201, facility="sysadmin-backup-vinnie-raw")
 hdlr = logging.FileHandler('/var/log/backup_raw.log')
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr) 
+logger.addHandler(handler) 
 logger.setLevel(logging.INFO)
+###############################################################################################
 
 def create_db():
-	db = MySQLdb.connect(host="localhost", user="root",passwd="password")
+	global mysql_user
+	global mysql_password
+	db = MySQLdb.connect(host="localhost", user=mysql_user,passwd=mysql_password)
 	return db
 
 ########################################################
@@ -45,13 +59,13 @@ class Command(object):
 try:
 	logger.info("attempting to apply read lock")
 	command = Command("flush tables with read lock")
-	command.run(timeout=5)
+	command.run(timeout=60)
 
 except Exception as e:
 	logger.error('the read lock couldnt be applied')
 	newdb = create_db()
 	newcur = newdb.cursor()
-	newcur.execute("select concat('KILL ',id,';') from information_schema.processlist where user='root' and info='flush tables with read lock'")
+	newcur.execute("select concat('KILL ',id,';') from information_schema.processlist where user='"+mysql_user+"' and info='flush tables with read lock'")
 	for row in newcur.fetchall() :
 		newcur.execute(row[0]) 
 	newdb.close()
@@ -60,25 +74,36 @@ except Exception as e:
 
 
 
-time.sleep(10) # sleep for 60 seconds, we will continue only if the thread was successful to apply the READ LOCK
+time.sleep(80) # sleep for 80 seconds, we will continue only if the thread was successful to apply the READ LOCK
 if lock_sucess:
+
+	def run_command(cmd):
+		
+		status, output = commands.getstatusoutput(cmd)
+		if status == 0:
+			if output.strip(): logger.info(output)
+		else:
+			logger.warning("Error executing the command " + cmd)
+			logger.error(output)
+			sys.exit(-1)
+
 	logger.info('creating snapshot')
-	call(["lvcreate", "--size 50G --snapshot --name snap_database /dev/vinnie/database"])
+	run_command("lvcreate --size 50G --snapshot --name snap_database /dev/vinnie/database")
 
 	logger.info('unlocking tables')
 	cur.execute("UNLOCK TABLES;")
 
 	logger.info('mounting snapshot')
-	call(["mount", "/dev/vinnie/snap_database /mnt/snapshot"])
+	run_command("mount /dev/vinnie/snap_database /mnt/snapshot")
 	 
 	logger.info('running backup')
-	call(["rsync", "--omit-dir-times -a --no-o --no-g -vz --progress --delete /mnt/snapshot/ /mnt/backup/database/raw/"])
+	run_command("rsync --omit-dir-times -a --no-o --no-g -vz --progress --delete /mnt/snaps")
 
 	logger.info('unmounting snapshot')
-	call(["umount", "/mnt/snapshot"])
+	run_command("umount /mnt/snapshot")
 
 	logger.info('delete snapshot')
-	call(["lvremove", "-f /dev/vinnie/snap_database"])
+	run_command("lvremove -f /dev/vinnie/snap_database")
 
 	logger.info('Backup finished')
 else:
