@@ -29,8 +29,8 @@ if (req.params.type == "host")
 command = "varnishadm ban "+ run + " == \"" + p+"\"";
 sys.print(command);
 child = exec(command, function (error, stdout, stderr) {
-sys.print('stdout: ' + stdout+ p);
-sys.print('stderr: ' + stderr);
+//sys.print('stdout: ' + stdout);
+//sys.print('stderr: ' + stderr);
   if (error !== null) {
     res.send(500,{"error": error, "output":stderr});
   } else{
