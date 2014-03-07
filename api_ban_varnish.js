@@ -1,7 +1,7 @@
 //Nodejs varnish API ban url or hosts. usage:
 //http://localhost:4321/clean/host?v=machine1.mydomain.com
 //http://localhost:4321/clean/url?v=aHR0cHM6Ly93d3cuZ29vZ2xlLnNlLz9nZmVfcmQ9Y3ImZWk9ZWNVWlU2cmVNWUhLOGdmbXBJR1lCUQ==
-//the basecode64 is the full URL -> "://www.google.se/?gfe_rd=cr&ei=ecUZU6reMYHK8gfmpIGYBQ"
+//the basecode64 is the full URL -> "https://www.google.se/?gfe_rd=cr&ei=ecUZU6reMYHK8gfmpIGYBQ"
 
 //Bugs: This is an internal tool so I was not really careful with the escape characters when pasing the URL... if you are going to use this in a production environment focus more on that!
 
